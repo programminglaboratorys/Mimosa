@@ -1,13 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 
-# The project name is written here and nowhere else in the CMake files.
 project(mimosa VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# uppercase copy of the name, used as the prefix of the option names below
 string(TOUPPER "${PROJECT_NAME}" PROJECT_PREFIX)
 
 # build tests/examples only when this is the top-level project, so it can be
