@@ -19,7 +19,7 @@ template <typename T>
 class Mutex {
 public:
 
-    Mutex(T value) : _value(std::move(value)) {}
+    explicit Mutex(T value) : _value(std::move(value)) {}
     Mutex(const Mutex&) = delete; // make it uncopyable
 
     MutexGuard<T> lock() {
@@ -28,7 +28,7 @@ public:
 
     MutexGuard<T> try_lock() { // NOT using std::optional for C++11 support
         if (!mut.try_lock()) return MutexGuard<T>(nullptr);
-        return MutexGuard<T>(this);
+        return MutexGuard<T>(this, false);
     }
 
 private:
@@ -49,9 +49,9 @@ public:
         o._m = nullptr;
     }
 
-    explicit MutexGuard(Mutex<T>* mutex) {
+    explicit MutexGuard(Mutex<T>* mutex, bool lockit = true) {
         _m = mutex;
-        if (_m) mutex->mut.lock();
+        if (lockit && _m) mutex->mut.lock();
     }
 
     ~MutexGuard() {
