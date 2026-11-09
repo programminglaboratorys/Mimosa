@@ -6,7 +6,6 @@
 #include <new>
 #include <thread>
 #include <type_traits>
-#include <functional>
 #include <utility>
 
 #define STDX_HAS_STD_OPTIONAL 0
@@ -222,19 +221,55 @@ void makeACallWithTryLock(int id)
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 }
+//
+//int main() {
+//    std::thread man1(makeACallWithTryLock, 1);
+//    std::thread man2(makeACallWithTryLock, 2);
+//    std::thread man3(makeACallWithTryLock, 3);
+//
+//    man1.join();
+//    man2.join();
+//    man3.join();
+//
+//    // unlock count check: everyone is done, so this must not hang
+//    auto g = m.lock();
+//    std::cout << "final = " << *g << std::endl;   // expect 3
+//
+//    return 0;
+//}
+
+
+#include <string>
+
+void makeACallWithLambda(int id)
+{
+    // the door is locked only while the lambda runs, and the result comes back by value
+    int before = m.with_lock([](int& counter) {
+        return counter++;        // returns the old value, then adds 1
+    });
+
+    // one single insertion, so lines from different men don't mix
+    std::cout << ("man" + std::to_string(id) + " saw " + std::to_string(before) + "\n");
+}
 
 int main() {
-    std::thread man1(makeACallWithTryLock, 1);
-    std::thread man2(makeACallWithTryLock, 2);
-    std::thread man3(makeACallWithTryLock, 3);
+    std::thread man1(makeACallWithLambda, 1);
+    std::thread man2(makeACallWithLambda, 2);
+    std::thread man3(makeACallWithLambda, 3);
 
     man1.join();
     man2.join();
     man3.join();
 
-    // unlock count check: everyone is done, so this must not hang
-    auto g = m.lock();
-    std::cout << "final = " << *g << std::endl;   // expect 3
+    // a callback that returns nothing works too
+    m.with_lock([](int& counter) { counter += 10; });
+
+    // a reference return gets decayed into a copy, so this must NOT change the mutex
+    int copy = m.with_lock([](int& counter) -> int& { return counter; });
+    copy = 999;
+
+    int final_value = m.with_lock([](int& counter) { return counter; });
+    std::cout << ("final = " + std::to_string(final_value) + " (expect 13), copy = " + std::to_string(copy) + "\n");
 
     return 0;
 }
