@@ -105,8 +105,8 @@ public:
     }
 
     detail::optional<MutexGuard<T>> try_lock() { // uses a custom optional if C++11
-        if (!mut.try_lock()) return MutexGuard<T>(nullptr, false);
-        return MutexGuard<T>(this, true);
+        if (!mut.try_lock()) return {};
+        return MutexGuard<T>(this, false);
     }
     
 private:
@@ -193,13 +193,13 @@ void makeACallWithTryLock(int id)
         auto g = m.try_lock();   // door handle: try it, never wait
         if (g)
         {
-            std::cout << "man" << id << " got the booth, counter = " << **g << std::endl;
+            std::cout << "man" << id << " got the booth, counter = " << **g << "\n";
             (**g)++;
             // long call, so the others will find the door busy
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
             return;              // guard dies here, door unlocks
         }
-        std::cout << "man" << id << " found it busy, waiting outside" << std::endl;
+        std::cout << "man" << id << " found it busy, waiting outside" << "\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 }
