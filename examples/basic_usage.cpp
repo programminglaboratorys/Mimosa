@@ -3,10 +3,10 @@
 #include <iostream>
 
 #include <mutex>
+#include <new>
 #include <thread>
+#include <type_traits>
 #include <utility>
-
-#pragma once
 
 #define STDX_HAS_STD_OPTIONAL 0
 
@@ -37,6 +37,13 @@ namespace detail {
         T* ptr() { return reinterpret_cast<T*>(&storage); }
         const T* ptr() const { return reinterpret_cast<const T*>(&storage); }
 
+        void reset() {
+            if (has_value) {
+                ptr()->~T();
+                has_value = false;
+            }
+        }
+
     public:
         optional() = default;
 
@@ -48,10 +55,28 @@ namespace detail {
             ::new (&storage) T(std::move(val));
         }
 
-        ~optional() {
-            if (has_value) {
-                ptr()->~T();
+        ~optional() { reset(); }
+
+        optional(const optional&) = delete;
+        optional& operator=(const optional&) = delete;
+
+        optional(optional&& o) noexcept : has_value(o.has_value) {
+            if (o.has_value) {
+                ::new (&storage) T(std::move(*o.ptr()));
+                o.reset();
             }
+        }
+
+        optional& operator=(optional&& o) noexcept {
+            if (this != &o) {
+                reset();
+                if (o.has_value) {
+                    ::new (&storage) T(std::move(*o.ptr()));
+                    has_value = true;
+                    o.reset();
+                }
+            }
+            return *this;
         }
 
         explicit operator bool() const { return has_value; }
@@ -80,8 +105,8 @@ public:
     }
 
     detail::optional<MutexGuard<T>> try_lock() { // uses a custom optional if C++11
-        if (!mut.try_lock()) return MutexGuard<T>(nullptr);
-        return MutexGuard<T>(this);
+        if (!mut.try_lock()) return MutexGuard<T>(nullptr, false);
+        return MutexGuard<T>(this, true);
     }
     
 private:
@@ -101,10 +126,10 @@ public:
     MutexGuard(MutexGuard&& o) noexcept : _m(o._m) {
         o._m = nullptr;
     }
-
-    explicit MutexGuard(Mutex<T>* mutex) {
+    
+    explicit MutexGuard(Mutex<T>* mutex, bool lock = true) { // used by try_lock
         _m = mutex;
-        mutex->mut.lock();
+        if (lock && mutex) mutex->mut.lock();
     }
 
     ~MutexGuard() {
@@ -137,23 +162,60 @@ void makeACallFromPhoneBooth()
     //...until now, with no interruption from other men
     //m.unlock();//man lets go of the door handle and unlocks the door
 }
+//
+//int main() {
+//    namespace mimo = mimosa;
+//
+//
+//    //man1 leaves the crowd to go to the phone booth
+//    std::thread man1(makeACallFromPhoneBooth);
+//    //Although man2 appears to start second, there's a good chance he might
+//    //reach the phone booth before man1
+//    std::thread man2(makeACallFromPhoneBooth);
+//    //And hey, man3 also joined the race to the booth
+//    std::thread man3(makeACallFromPhoneBooth);
+//    
+//    man1.join();//man1 finished his phone call and joins the crowd
+//    man2.join();//man2 finished his phone call and joins the crowd
+//    man3.join();//man3 finished his phone call and joins the crowd
+//
+//
+//    return 0;
+//}
+
+
+#include <chrono>   // add near the other includes
+
+void makeACallWithTryLock(int id)
+{
+    while (true)
+    {
+        auto g = m.try_lock();   // door handle: try it, never wait
+        if (g)
+        {
+            std::cout << "man" << id << " got the booth, counter = " << **g << std::endl;
+            (**g)++;
+            // long call, so the others will find the door busy
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            return;              // guard dies here, door unlocks
+        }
+        std::cout << "man" << id << " found it busy, waiting outside" << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+}
 
 int main() {
-    namespace mimo = mimosa;
+    std::thread man1(makeACallWithTryLock, 1);
+    std::thread man2(makeACallWithTryLock, 2);
+    std::thread man3(makeACallWithTryLock, 3);
 
+    man1.join();
+    man2.join();
+    man3.join();
 
-    //man1 leaves the crowd to go to the phone booth
-    std::thread man1(makeACallFromPhoneBooth);
-    //Although man2 appears to start second, there's a good chance he might
-    //reach the phone booth before man1
-    std::thread man2(makeACallFromPhoneBooth);
-    //And hey, man3 also joined the race to the booth
-    std::thread man3(makeACallFromPhoneBooth);
-    
-    man1.join();//man1 finished his phone call and joins the crowd
-    man2.join();//man2 finished his phone call and joins the crowd
-    man3.join();//man3 finished his phone call and joins the crowd
-
+    // unlock count check: everyone is done, so this must not hang
+    auto g = m.lock();
+    std::cout << "final = " << *g << std::endl;   // expect 3
 
     return 0;
 }
