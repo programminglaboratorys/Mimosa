@@ -126,8 +126,12 @@ public:
     MutexGuard(MutexGuard&& o) noexcept : _m(o._m) {
         o._m = nullptr;
     }
-    
-    explicit MutexGuard(Mutex<T>* mutex, bool lock = true) { // used by try_lock
+
+    explicit MutexGuard(Mutex<T>* mutex) {
+        _m = mutex;
+    }
+
+    explicit MutexGuard(Mutex<T>* mutex, bool lock) { // used by try_lock
         _m = mutex;
         if (lock) mutex->mut.lock();
     }
