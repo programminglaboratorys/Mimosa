@@ -6,7 +6,7 @@
 <h3 align="center">mimosa</h3>
 
 <p align="center">
-  <strong>one sentence about what it does..</strong>
+  <strong>Rust style mutex library where it stores the type in the mutex itself</strong>
 </p>
 
 <p align="center">
@@ -21,8 +21,7 @@
 ---
 
 ## About
-
-What this project is, and what it is not.
+cross-compiler, cross-platform mutex library that aims to mimic Rust style mutex where it stores the type in the mutex itself
 
 ## Usage
 

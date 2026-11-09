@@ -6,14 +6,64 @@
 #include <thread>
 #include <utility>
 
-template <typename T>
-class optional {
-    optional() {
-    
-    }
-    bool is_valid;
-    T ret;
-};
+#pragma once
+
+#define STDX_HAS_STD_OPTIONAL 0
+
+#if (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || (__cplusplus >= 201703L)
+
+#if defined(__has_include)
+#if __has_include(<optional>)
+#include <optional>
+#undef STDX_HAS_STD_OPTIONAL
+#define STDX_HAS_STD_OPTIONAL 1
+#endif
+#endif
+
+#endif
+
+namespace detail {
+
+#if STDX_HAS_STD_OPTIONAL
+    template <typename T>
+    using optional = std::optional<T>;
+
+#else
+    template <typename T>
+    class optional {
+        typename std::aligned_storage<sizeof(T), alignof(T)>::type storage;
+        bool has_value = false;
+
+        T* ptr() { return reinterpret_cast<T*>(&storage); }
+        const T* ptr() const { return reinterpret_cast<const T*>(&storage); }
+
+    public:
+        optional() = default;
+
+        optional(const T& val) : has_value(true) {
+            ::new (&storage) T(val);
+        }
+
+        optional(T&& val) : has_value(true) {
+            ::new (&storage) T(std::move(val));
+        }
+
+        ~optional() {
+            if (has_value) {
+                ptr()->~T();
+            }
+        }
+
+        explicit operator bool() const { return has_value; }
+
+        T& operator*() { return *ptr(); }
+        const T& operator*() const { return *ptr(); }
+        T* operator->() { return ptr(); }
+        const T* operator->() const { return ptr(); }
+    };
+#endif
+
+} // namespace detail
 
 template <typename T>
 class MutexGuard;
@@ -29,11 +79,11 @@ public:
         return MutexGuard<T>(this);
     }
 
-    optional<MutexGuard<T>> try_lock() { // NOT using std::optional for C++11 support
+    detail::optional<MutexGuard<T>> try_lock() { // uses a custom optional if C++11
         if (!mut.try_lock()) return MutexGuard<T>(nullptr);
-        return optional<MutexGuard<T>(this, false)>;
+        return MutexGuard<T>(this);
     }
-
+    
 private:
     template <typename> friend class MutexGuard;
     T _value;
