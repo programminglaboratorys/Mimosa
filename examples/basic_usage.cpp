@@ -150,9 +150,9 @@ public:
         if (_m) _m->mut.unlock();
     }
 
-    T* operator->() { return &_m->_value; }
+    T* operator->() const { return &_m->_value; }
 
-    T& operator*() {
+    T& operator*() const {
         return _m->_value;
     }
 
