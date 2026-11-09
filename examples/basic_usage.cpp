@@ -114,8 +114,11 @@ public:
         return MutexGuard<T>(this, adopt_lock);
     }
 
-    template <typename RetT>
-    detail::optional<MutexGuard<T>> with_lock(std::function<RetT(T&)> callback) { // uses a custom optional if C++11
+    // runs callback on the locked data and returns its result BY VALUE
+    // a returned reference is decayed into a copy (made while still locked)
+    // NOTE: returned pointers are NOT protected. Don't return pointers into the data <3
+    template <typename F>
+    auto with_lock(F callback) -> typename std::decay<decltype(callback(std::declval<T&>()))>::type {
         auto guard = lock();
         return callback(*guard);
     }
