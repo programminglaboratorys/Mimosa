@@ -26,6 +26,11 @@ public:
         return MutexGuard<T>(this);
     }
 
+    MutexGuard<T> try_lock() { // NOT using std::optional for C++11 support
+        if (!mut.try_lock()) return MutexGuard<T>(nullptr);
+        return MutexGuard<T>(this);
+    }
+
 private:
     template <typename> friend class MutexGuard;
     T _value;
