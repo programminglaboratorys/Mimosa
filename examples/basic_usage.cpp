@@ -129,7 +129,7 @@ public:
     
     explicit MutexGuard(Mutex<T>* mutex, bool lock = true) { // used by try_lock
         _m = mutex;
-        if (lock && mutex) mutex->mut.lock();
+        if (lock) mutex->mut.lock();
     }
 
     ~MutexGuard() {
