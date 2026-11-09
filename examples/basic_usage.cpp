@@ -23,6 +23,10 @@
 
 #endif
 
+struct adopt_lock_t {};
+
+constexpr adopt_lock_t adopt_lock{};
+
 namespace detail {
 
 #if STDX_HAS_STD_OPTIONAL
@@ -107,7 +111,7 @@ public:
 
     detail::optional<MutexGuard<T>> try_lock() { // uses a custom optional if C++11
         if (!mut.try_lock()) return {};
-        return MutexGuard<T>(this, false);
+        return MutexGuard<T>(this, adopt_lock);
     }
 
     template <typename RetT>
@@ -140,10 +144,8 @@ public:
         mutex->mut.lock();
     }
 
-    // NOTE: ONLY pass false if the mutex is LOCKED! guards are suppose to hold a locked mutex!
-    explicit MutexGuard(Mutex<T>* mutex, bool lock) { // used by try_lock
+    constexpr explicit MutexGuard(Mutex<T>* mutex, adopt_lock_t _) { // used by try_lock
         _m = mutex;
-        if (lock) mutex->mut.lock();
     }
 
     ~MutexGuard() {
