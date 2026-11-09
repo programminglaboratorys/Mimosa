@@ -144,7 +144,7 @@ public:
         mutex->mut.lock();
     }
 
-    constexpr explicit MutexGuard(Mutex<T>* mutex, adopt_lock_t _) { // used by try_lock
+    explicit MutexGuard(Mutex<T>* mutex, adopt_lock_t) { // used by try_lock
         _m = mutex;
     }
 
