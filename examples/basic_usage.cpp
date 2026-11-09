@@ -6,6 +6,7 @@
 #include <new>
 #include <thread>
 #include <type_traits>
+#include <functional>
 #include <utility>
 
 #define STDX_HAS_STD_OPTIONAL 0
@@ -108,6 +109,12 @@ public:
         if (!mut.try_lock()) return {};
         return MutexGuard<T>(this, false);
     }
+
+    template <typename RetT>
+    detail::optional<MutexGuard<T>> with_lock(std::function<RetT(T&)> callback) { // uses a custom optional if C++11
+        auto guard = lock();
+        return callback(*guard);
+    }
     
 private:
     template <typename> friend class MutexGuard;
@@ -123,14 +130,17 @@ public:
     MutexGuard(const MutexGuard&) = delete; // make it uncopyable
     MutexGuard& operator=(const MutexGuard&) = delete;
 
+    //move constructor
     MutexGuard(MutexGuard&& o) noexcept : _m(o._m) {
         o._m = nullptr;
     }
 
     explicit MutexGuard(Mutex<T>* mutex) {
         _m = mutex;
+        mutex->mut.lock();
     }
 
+    // NOTE: ONLY pass false if the mutex is LOCKED! guards are suppose to hold a locked mutex!
     explicit MutexGuard(Mutex<T>* mutex, bool lock) { // used by try_lock
         _m = mutex;
         if (lock) mutex->mut.lock();
