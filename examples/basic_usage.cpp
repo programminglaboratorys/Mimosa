@@ -46,7 +46,7 @@ public:
 
     explicit MutexGuard(Mutex<T>* mutex) {
         _m = mutex;
-        mutex->mut.lock();
+        if (_m) mutex->mut.lock();
     }
 
     ~MutexGuard() {
@@ -59,6 +59,9 @@ public:
         return _m->_value;
     }
 
+    bool is_valid() {
+        return _m != nullptr;
+    }
 
 private:
     friend Mutex<T>;
