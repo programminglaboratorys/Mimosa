@@ -8,6 +8,9 @@
 
 template <typename T>
 class optional {
+    optional() {
+    
+    }
     bool is_valid;
     T ret;
 };
@@ -26,9 +29,9 @@ public:
         return MutexGuard<T>(this);
     }
 
-    MutexGuard<T> try_lock() { // NOT using std::optional for C++11 support
+    optional<MutexGuard<T>> try_lock() { // NOT using std::optional for C++11 support
         if (!mut.try_lock()) return MutexGuard<T>(nullptr);
-        return MutexGuard<T>(this, false);
+        return optional<MutexGuard<T>(this, false)>;
     }
 
 private:
@@ -49,9 +52,9 @@ public:
         o._m = nullptr;
     }
 
-    explicit MutexGuard(Mutex<T>* mutex, bool lockit = true) {
+    explicit MutexGuard(Mutex<T>* mutex) {
         _m = mutex;
-        if (lockit && _m) mutex->mut.lock();
+        mutex->mut.lock();
     }
 
     ~MutexGuard() {
