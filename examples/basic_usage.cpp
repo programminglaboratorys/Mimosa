@@ -158,7 +158,7 @@ public:
         return _m->_value;
     }
 
-    bool is_valid() {
+    bool is_valid() const {
         return _m != nullptr;
     }
 
